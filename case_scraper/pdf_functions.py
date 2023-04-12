@@ -4,8 +4,33 @@ import regex as re
 from bs4 import BeautifulSoup
 from io import BytesIO
 
+# extract_pdf_content("https://www.justice.gov/atr/case-document/file/513946/download")
 
+import pytesseract
+from pdf2image import convert_from_bytes
 
+# Make sure to install pdf2image: pip install pdf2image
+# And also install poppler-utils: sudo apt-get install -y poppler-utils (for Ubuntu)
+
+def extract_pdf_content_ocr(pdf_url):
+    """
+    Function designed to perform OCR on pdf images. This needs pytesseract, tesseract, and poppler to be installed.
+    :param pdf_url:
+    :return:
+    """
+    response = requests.get(pdf_url)
+    pdf_file = BytesIO(response.content)
+    
+    # Convert PDF pages to images
+    images = convert_from_bytes(pdf_file.read())
+    
+    # Perform OCR on the images using pytesseract
+    text = ""
+    for image in images:
+        text += pytesseract.image_to_string(image)
+        print(text)
+    
+    return text
 
 def extract_pdf_content(pdf_url):
     response = requests.get(pdf_url)
@@ -15,6 +40,7 @@ def extract_pdf_content(pdf_url):
     for page_num in range(reader.numPages):
         page = reader.getPage(page_num)
         text += page.extractText()
+        print(text)
     return text
 
 def pdf_to_text(file):
