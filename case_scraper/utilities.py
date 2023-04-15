@@ -1,5 +1,7 @@
 import datetime
 import pandas as pd
+import requests
+
 from collections import Counter
 
 #TODO: create a function that will calculate the time from case_open_date to final_judgment.
@@ -72,3 +74,11 @@ def find_president(date: datetime.datetime):
     return None
 
 # Other utility functions should be placed here
+
+def is_pdf_link(url):
+    try:
+        response = requests.head(url, allow_redirects=True)
+        content_type = response.headers.get('Content-Type', '').lower()
+        return content_type == 'application/pdf'
+    except requests.RequestException:
+        return False
