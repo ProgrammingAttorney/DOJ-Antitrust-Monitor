@@ -54,22 +54,14 @@ pprint(case_data_list)
 # if you use a list of questions, the return is going to be a tuple containing a list of Q&A tuples as well as the chat_history --- (answers, result["chat_history"])
 # if you ask a single question, the return is going to be a tuple containing a Q&A tuple and the chat history )(query, result["answer"]), result["chat_history"])
 # if you ask a single question, make sure to upload the chat history
+# results = query_text(query, knowledge_base, [])
 
-
-
-
-# text_splitter = CharacterTextSplitter(
-#     separator = "\n",
-#     chunk_size = 1000,
-#     chunk_overlap  = 200,
-#     length_function = len,
-# )
-# texts = text_splitter.split_text(text)
-#
-# # Download embeddings from OpenAI
-# embeddings = OpenAIEmbeddings()
-# docsearch = FAISS.from_texts(texts, embeddings)
-# chain = load_qa_chain(OpenAI("gpt-4"), chain_type="stuff")
-# query = "who are the authors of the article?"
-# docs = docsearch.similarity_search(query)
-# chain.run(input_documents=docs, question=query)
+# questions_list = ["Will the merger harm consumers? If so how? Provide a comprehensive answer"
+# "Will the merger reduce innovation? If so how? Provide a comprehensive answer",
+# "Will the merger reduce head-to-head competition? If so how? Provide a comprehensive answer",
+# "Will the merger eliminate potential competition? If so how? Provide a comprehensive answer",
+# "Will the merger harm competitors? If so how? Provide a comprehensive answer",
+# "Will the merger facilitate coordination among competitors? If so how? Provide a comprehensive answer",
+#                   "what are the relevant product markets alleged in the complaint? Provide a comprehensive answer.",
+#                   "what are the relevant geographic markets alleged in the complaint? Provide a comprehensive answer.",
+#                   "what remedies did the merging parties propose? Provide a comprehensive answer."]
