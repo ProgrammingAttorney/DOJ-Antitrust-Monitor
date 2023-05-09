@@ -141,7 +141,7 @@ def create_embeddings_from_text_chunks(text_chunks):
     return knowledge_base
 
 def query_text(query, knowledge_base, chat_history=[]):
-    retriever = knowledge_base.as_retriever(search_type="mmr", search_kwargs={"k": 3})
+    retriever = knowledge_base.as_retriever(search_type="mmr", search_kwargs={"k": 5})
     llm = OpenAI(model_name="gpt-4")
     qa = ConversationalRetrievalChain.from_llm(llm, retriever)
     if isinstance(query, list):
