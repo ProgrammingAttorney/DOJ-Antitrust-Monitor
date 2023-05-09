@@ -3,13 +3,12 @@ import pandas as pd
 import requests
 import openai
 from collections import Counter
-from sentence_transformers import SentenceTransformer
+from langchain.chains import ConversationalRetrievalChain
+from langchain.indexes import VectorstoreIndexCreator
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.chains.question_answering import load_qa_chain
 from langchain.llms import OpenAI
-from langchain.callbacks import get_openai_callback
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Chroma
 import os
 
 os.environ["OPENAI_API_KEY"] = "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"
@@ -120,11 +119,11 @@ def split_document_into_chunks(document):
     from langchain.text_splitter import CharacterTextSplitter
     text_splitter = CharacterTextSplitter(
         separator="\n",
-        chunk_size=2000,
+        chunk_size=1000,
         chunk_overlap=200,
         length_function=len
     )
-    chunks = text_splitter.split_text(document)
+    chunks = text_splitter.split_documents(document)
     return chunks
 questions_list = ["Will the merger harm consumers? If so how? Provide a comprehensive answer"
 "Will the merger reduce innovation? If so how? Provide a comprehensive answer",
@@ -138,39 +137,56 @@ questions_list = ["Will the merger harm consumers? If so how? Provide a comprehe
 # Create embeddings using the OpenAI API
 def create_embeddings_from_text_chunks(text_chunks):
     embeddings = OpenAIEmbeddings()
-    knowledge_base = FAISS.from_texts(text_chunks, embeddings)
+    knowledge_base = Chroma.from_texts(text_chunks, embeddings)
     return knowledge_base
 
-def query_text(query, knowledge_base):
-    docs = knowledge_base.similarity_search(query)
-    llm = OpenAI()
-    chain = load_qa_chain(llm, chain_type="stuff")
-    with get_openai_callback() as cb:
-        response = chain.run(input_documents=docs, question = query)
-        print(response)
-        print(cb)
+def query_text(query, knowledge_base, chat_history=[]):
+    retriever = knowledge_base.as_retriever(search_type="mmr", search_kwargs={"k": 3})
+    llm = OpenAI(model_name="gpt-4")
+    qa = ConversationalRetrievalChain.from_llm(llm, retriever)
+    if isinstance(query, list):
 
-#
-#
-# def create_embeddings(model, paragraphs):
-#     embeddings = model.encode(paragraphs)
-#     return np.array(embeddings)
-#
-# # Build a semantic index using FAISS
-# def build_semantic_index(embeddings):
-#     index = faiss.IndexFlatL2(embeddings.shape[1])
-#     index.add(embeddings)
-#     return index
+        chat_history = []
+        answers = []
+        for question in query:
+            result = qa({"question":question, "chat_history":chat_history})
+            chat_history.append(result["chat_history"])
+            answers.append((question, result["answer"]))
+        return answers, result["chat_history"]
+    else:
+        result = qa({"question":query, "chat_history":chat_history})
+        return [(query, result["answer"]), result["chat_history"]]
 
 
-# Create an embedding for the question
-def create_question_embedding(model, question):
-    return model.encode([question])
+def load_pdf_temporarily(url):
+    from langchain.document_loaders import PyPDFLoader
+    # Download the PDF file
+    response = requests.get(url)
 
-# Search for the top-k most similar paragraphs
-def search_similar_paragraphs(index, question_embedding, k=15):
-    distances, indices = index.search(question_embedding, k)
-    return indices[0]
+    file_path = "temp.pdf"
+
+    with open(file_path, 'wb') as f:
+        f.write(response.content)
+
+    # Process the PDF
+    try:
+        document = PyPDFLoader(file_path).load()
+        return document
+    finally:
+        # Delete the file
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        else:
+            print("The file does not exist")
+def find_complaint(dictionary_list):
+    for dictionary in dictionary_list:
+        if dictionary.get('title') == 'complaint':
+            return dictionary
+    return None
+
+# Example usage:
+
+
 
 # Answer the question using the retrieved paragraphs
 # def answer_question(api_key, model_name, question, context):

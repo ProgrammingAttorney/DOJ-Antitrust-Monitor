@@ -44,11 +44,17 @@ for case_data in case_data_list[0:10]:
 pprint(case_data_list)
 
 # We need to split the text that we read into smaller chunks so that during information retreival we don't hit the token size limits.
+# complaint = find_complaint(case_data["documents"])
+# complaint_link = complaint["attachments"][0]["url"]
+# documents = load_pdf_temporarily(complaint_link)
+#texts = text_splitter.split_documents(documents)
+#query_text
+# chunks = split_document_into_chunks(text)
+# knowledge_base = create_embeddings_from_text_chunks(texts)
+# if you use a list of questions, the return is going to be a tuple containing a list of Q&A tuples as well as the chat_history --- (answers, result["chat_history"])
+# if you ask a single question, the return is going to be a tuple containing a Q&A tuple and the chat history )(query, result["answer"]), result["chat_history"])
+# if you ask a single question, make sure to upload the chat history
 
-text = case_data["documents"][0]["attachments"][0]["text"]
-chunks = split_document_into_chunks(text)
-knowledge_base = create_embeddings_from_text_chunks(chunks)
-query_text(f"""What type of mergeris the complaint challenging?""", knowledge_base)
 
 
 
