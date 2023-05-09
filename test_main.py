@@ -43,7 +43,7 @@ for case_data in case_data_list[0:10]:
     pass
 pprint(case_data_list)
 
-# We need to split the text that we read into smaller chunks so that during information retreival we don't hit the token size limits.
+# need to implement a for-loop here
 # complaint = find_complaint(case_data["documents"])
 # complaint_link = complaint["attachments"][0]["url"]
 # documents = load_pdf_temporarily(complaint_link)
