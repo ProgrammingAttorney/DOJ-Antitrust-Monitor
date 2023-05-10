@@ -2,14 +2,15 @@ import datetime
 import pandas as pd
 import requests
 import openai
+import regex as re
+import os
 from collections import Counter
 from langchain.chains import ConversationalRetrievalChain
-from langchain.indexes import VectorstoreIndexCreator
-from langchain.text_splitter import CharacterTextSplitter
+# from langchain.indexes import VectorstoreIndexCreator
+# from langchain.text_splitter import CharacterTextSplitter
 from langchain.llms import OpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
-import os
 
 os.environ["OPENAI_API_KEY"] = "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"
 #TODO: create a function that will calculate the time from case_open_date to final_judgment.
@@ -94,11 +95,7 @@ def is_pdf_link(url):
 
 openai.api_key =  "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"
 
-import openai
-import regex as re
-import faiss
-import numpy as np
-# model = SentenceTransformer('sentence-transformers/distilbert-base-nli-mean-tokens')
+
 
 
 def preprocess_text(text):

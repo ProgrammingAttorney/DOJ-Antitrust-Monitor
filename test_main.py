@@ -42,19 +42,55 @@ for case_data in case_data_list[0:10]:
     case_data.update(case_details)
     pass
 pprint(case_data_list)
+for case_data in case_data_list[0:10]:
+    
+    complaint = find_complaint(case_data["documents"])
+    complaint_link = complaint["attachments"][0]["url"]
+    documents = load_pdf_temporarily(complaint_link)
+    texts = split_document_into_chunks(documents)
+    knowledge_base = create_embeddings_from_text_chunks(texts)
+    # merger type
+    chat_history = []
+    merger_type_query = query_text("What type of merger does the complaint challenge? Give a one word answer.", knowledge_base, chat_history)
+    merger_type = merger_type_query[0][-1]
+    chat_history.append(merger_type_query[-1])
+    # consumated / unconsumated
+    consumation_query = query_text("Is the complaint challenging a consummated or unconsummated merger? Give a one word answer.", knowledge_base, chat_history)
+    consumation  = consumation_query[0][-1]
+    chat_history.append(consumation[-1])
+    # industry
+    industry_query = query_text("In what industry do the merging parties operate? Give a one word answer.", knowledge_base,
+                                   chat_history)
+    industry  = industry_query[0][-1]
+    chat_history.append(industry_query[-1])
+    # relevant geographic markets
+    geographic_markets_query = query_text("What are the relevant geographic markets alleged in the complaint? Give a precise answer that specifies the relevant market only.", knowledge_base,
+                                          chat_history)
+    geographic_markets  = geographic_markets_query[0][-1]
+    chat_history.append(geographic_markets[-1])
+    # relevant product markets
+    product_markets_query = query_text("What are the relevant product markets alleged in the complaint? Give a precise answer that specifies the relevant market only.", knowledge_base,
+                                       chat_history)
+    product_markets = product_markets_query[0][-1]
+    chat_history.append(product_markets[-1])
+    # merger signing date
+    signing_date_query = query_text("When did the defendants sign their agreement? Give only the date of signing", knowledge_base,
+                                       chat_history)
+    signing_date = signing_date_query[0][-1]
+    chat_history.append(signing_date[-1])
+    print("Merger type: ", merger_type)
+    print("Merger consummation status: ", consumation)
+    print("Industry: ", industry)
+    print("Relevant geographic markets: ", geographic_markets)
+    print("Relevant product markets: ", product_markets)
+    print("Merger signing date: ", signing_date)
 
-# need to implement a for-loop here
-# complaint = find_complaint(case_data["documents"])
-# complaint_link = complaint["attachments"][0]["url"]
-# documents = load_pdf_temporarily(complaint_link)
-#texts = text_splitter.split_documents(documents)
-#query_text
-# chunks = split_document_into_chunks(text)
-# knowledge_base = create_embeddings_from_text_chunks(texts)
-# if you use a list of questions, the return is going to be a tuple containing a list of Q&A tuples as well as the chat_history --- (answers, result["chat_history"])
-# if you ask a single question, the return is going to be a tuple containing a Q&A tuple and the chat history )(query, result["answer"]), result["chat_history"])
-# if you ask a single question, make sure to upload the chat history
-# results = query_text(query, knowledge_base, [])
+# synopsis
+    # synopsis_query =
+    # if you use a list of questions, the return is going to be a tuple containing a list of Q&A tuples as well as the chat_history --- (answers, result["chat_history"])
+    # if you ask a single question, the return is going to be a tuple containing a Q&A tuple and the chat history )(query, result["answer"]), result["chat_history"])
+    # if you ask a single question, make sure to upload the chat history
+    # results = query_text(query, knowledge_base, [])
 
 # questions_list = ["Will the merger harm consumers? If so how? Provide a comprehensive answer"
 # "Will the merger reduce innovation? If so how? Provide a comprehensive answer",
