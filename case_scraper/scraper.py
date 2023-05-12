@@ -172,6 +172,7 @@ def extract_case_details_from_casepage(casepage_link):
         for doc_el in doc_els:
             doc_name = doc_el.get_text(strip=True)
             doc_href = doc_el.a.get("href")
+
             doc_link = urllib.parse.urljoin(base_url, doc_href)
             doc_tup = (doc_name, doc_link)
             documents.append(doc_tup)
@@ -232,6 +233,9 @@ def get_document_details_from_document_page(doc_page_link):
         # Iterate through the list of attachments
         for attachment in result["attachments"]:
             # Get the value from the "url" key
+            ##TODO: Need to fix this to account for difference in DOM on https://www.justice.gov/atr/case-document/motion-and-memorandum-united-states-support-entry-final-judgment-19
+            if not "url" in attachment.keys():
+                continue
             url = attachment["url"]
 
             # Extract text from the PDF
@@ -240,7 +244,9 @@ def get_document_details_from_document_page(doc_page_link):
             # Store the document text in the subdictionary
             attachment["text"] = document_text
             # pdb.set_trace()
-            doc_type = result["document type"][0]
+            doc_type = ""
+            if "document type" in result.keys():
+                doc_type = result["document type"][0]
             if "complaint" in doc_type.lower():
                 result["title"] = "complaint"
             else:
