@@ -3,6 +3,7 @@ import json
 from langchain.embeddings.openai import OpenAIEmbeddings
 
 from case_scraper.utilities import *
+from case_scraper.pdf_functions import *
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import ElasticVectorSearch, Pinecone, Weaviate, FAISS
 from langchain.chains.question_answering import load_qa_chain
@@ -52,7 +53,11 @@ for case_data in case_data_list:
     signing_date = "NA"
     if complaint:
         complaint_link = complaint["attachments"][0]["url"]
+
+
         documents = load_pdf_temporarily(complaint_link)
+
+
         texts = split_document_into_chunks(documents)
         knowledge_base = create_embeddings_from_text_chunks(texts)
         # merger type

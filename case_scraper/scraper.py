@@ -232,6 +232,8 @@ def get_document_details_from_document_page(doc_page_link):
     if len(result.get("attachments", [])) > 0:
         # Iterate through the list of attachments
         for attachment in result["attachments"]:
+            if isinstance(attachment, str):
+                continue
             # Get the value from the "url" key
             ##TODO: Need to fix this to account for difference in DOM on https://www.justice.gov/atr/case-document/motion-and-memorandum-united-states-support-entry-final-judgment-19
             if not "url" in attachment.keys():

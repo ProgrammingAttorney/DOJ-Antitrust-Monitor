@@ -19,6 +19,10 @@ import fitz  # PyMuPDF
 def needs_ocr(pdf_file):
     # response = requests.get(pdf_url)
     # pdf_file = BytesIO(response.content)
+    if isinstance(pdf_file, str):
+        with open(pdf_file, "rb") as fp:
+            pdf_file = fp.read()
+
     doc = fitz.open(stream=pdf_file, filetype="pdf")
 
     text_threshold = 50  # Minimum number of non-whitespace characters to consider a page as text-based

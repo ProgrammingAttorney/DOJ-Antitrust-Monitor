@@ -4,6 +4,7 @@ import requests
 import openai
 import regex as re
 import os
+from .pdf_functions import needs_ocr, extract_pdf_content_ocr
 from collections import Counter
 from langchain.chains import ConversationalRetrievalChain
 # from langchain.indexes import VectorstoreIndexCreator
@@ -134,6 +135,7 @@ questions_list = ["Will the merger harm consumers? If so how? Provide a comprehe
 # Create embeddings using the OpenAI API
 def create_embeddings_from_text_chunks(text_chunks):
     embeddings = OpenAIEmbeddings()
+
     knowledge_base = Chroma.from_documents(text_chunks, embeddings)
     return knowledge_base
 
@@ -213,6 +215,7 @@ def openaipricing(nb_tokens_used: int, model_name: str = None, embeddings=False,
 def load_pdf_temporarily(url):
     from langchain.document_loaders import PyPDFLoader
     # Download the PDF file
+
     response = requests.get(url)
 
     file_path = "temp.pdf"
@@ -220,6 +223,10 @@ def load_pdf_temporarily(url):
     with open(file_path, 'wb') as f:
         f.write(response.content)
 
+    if needs_ocr(file_path):
+        text = extract_pdf_content_ocr(file_path)
+        with open(file_path, 'w') as f:
+            f.write(text)
     # Process the PDF
     try:
         document = PyPDFLoader(file_path).load()
