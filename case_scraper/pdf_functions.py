@@ -17,11 +17,16 @@ from pdf2image import convert_from_bytes
 import fitz  # PyMuPDF
 
 def needs_ocr(pdf_file):
+    """
+
+    :param pdf_file: Bytes Content of PDF File
+    :return:
+    """
     # response = requests.get(pdf_url)
     # pdf_file = BytesIO(response.content)
-    if isinstance(pdf_file, str):
-        with open(pdf_file, "rb") as fp:
-            pdf_file = fp.read()
+    # if isinstance(pdf_file, str):
+    #     with open(pdf_file, "rb") as fp:
+    #         pdf_file = fp.read()
 
     doc = fitz.open(stream=pdf_file, filetype="pdf")
 
@@ -52,7 +57,7 @@ def needs_ocr(pdf_file):
 def extract_pdf_content_ocr(pdf_file):
     """
     Function designed to perform OCR on pdf images. This needs pytesseract, tesseract, and poppler to be installed.
-    :param pdf_file:
+    :param pdf_file: Bytes Content of pdf File
     :return:
     """
     # Convert PDF pages to images

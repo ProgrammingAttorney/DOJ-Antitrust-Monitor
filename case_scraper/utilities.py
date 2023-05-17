@@ -223,9 +223,9 @@ def load_pdf_temporarily(url):
     with open(file_path, 'wb') as f:
         f.write(response.content)
 
-    if needs_ocr(file_path):
-        text = extract_pdf_content_ocr(file_path)
-        with open(file_path, 'w') as f:
+    if needs_ocr(f):
+        text = extract_pdf_content_ocr(f)
+        with open(file_path, 'wb') as f:
             f.write(text)
     # Process the PDF
     try:

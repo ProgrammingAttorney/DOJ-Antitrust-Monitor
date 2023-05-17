@@ -1,8 +1,10 @@
 import os
 import json
+import time
 from langchain.embeddings.openai import OpenAIEmbeddings
 
 from case_scraper.utilities import *
+from tqdm import tqdm
 from case_scraper.pdf_functions import *
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import ElasticVectorSearch, Pinecone, Weaviate, FAISS
@@ -28,7 +30,7 @@ for row in rows:
 
 # Step 5: Iterate through the list of case data and access the case_link attribute
 tokens_used = 0
-for case_data in case_data_list:
+for case_data in tqdm(case_data_list, desc="Collecting Data", ascii=False, ncols=75,  bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}"):
     case_link = case_data['case_link']
     # Step 6: Extract case details from the case page
     case_details = extract_case_details_from_casepage(case_link)
@@ -44,6 +46,10 @@ for case_data in case_data_list:
         # process_document_details(document_details)
     case_data.update(case_details)
 
+with open('DOJdata-unprocessed.json', 'w') as f:
+    json.dump(case_data_list, f)
+
+for case_data in tqdm(case_data_list, desc="Answering Questions", ascii=False, ncols=75, bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}"):
     complaint = find_complaint(case_data["documents"])
     merger_type = "NA"
     consumation = "NA"
