@@ -45,9 +45,9 @@ for case_data in tqdm(case_data_list, desc="Collecting Data", ascii=False, ncols
         documents[idx] = document_details
         # process_document_details(document_details)
     case_data.update(case_details)
-
-with open('DOJdata-unprocessed.json', 'w') as f:
-    json.dump(case_data_list, f)
+import pickle
+with open(f"doj-data-{datetime.date.today().strftime('%m.%d.%Y')}", "wb") as f:
+    pickle.dump(case_data_list, f)
 
 for case_data in tqdm(case_data_list, desc="Answering Questions", ascii=False, ncols=75, bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}"):
     complaint = find_complaint(case_data["documents"])
