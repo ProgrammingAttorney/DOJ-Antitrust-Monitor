@@ -151,7 +151,7 @@ def create_embeddings_from_text_chunks(text_chunks):
     
     embeddings = OpenAIEmbeddings()
     knowledge_base = Pinecone.from_documents(text_chunks, embeddings, index_name=index_name)
-    # knowledge_base = Chroma.from_documents(text_chunks, embeddings)
+    # knowledge_base = Chroma.from_documents(text_chunks, embeddings) if using chroma, make sure to modify the search type to mmr in the query_text function.
     return knowledge_base
 
 def query_text(query, knowledge_base, chat_history=None):
