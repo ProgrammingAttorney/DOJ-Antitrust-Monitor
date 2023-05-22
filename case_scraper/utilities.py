@@ -11,9 +11,23 @@ from langchain.chains import ConversationalRetrievalChain
 # from langchain.text_splitter import CharacterTextSplitter
 from langchain.llms import OpenAI
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Chroma
+from langchain.vectorstores import Pinecone
 from langchain.callbacks import get_openai_callback
+import pinecone
+
+pinecone_API_KEY = "71443f75-d244-4466-b33e-ea17b36f6a94"
+pinecone.init(
+        api_key=pinecone_API_KEY,
+        environment="us-west4-gcp-free"
+        )
+
+index_name = "doj-docs"
+
+
+
+
 os.environ["OPENAI_API_KEY"] = "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"
+
 #TODO: create a function that will calculate the time from case_open_date to final_judgment.
 ## for final judgments, always check the dates of the final judgment document and take the later date for the timeline calculation.
 #TODO: create a function that feeds the pdf text in chatgpt and extracts the relevant product definition, the geographic market, the names of the attorneys, and complete list of plaintiffs.
@@ -134,13 +148,15 @@ questions_list = ["Will the merger harm consumers? If so how? Provide a comprehe
                   "what remedies did the merging parties propose? Provide a comprehensive answer."]
 # Create embeddings using the OpenAI API
 def create_embeddings_from_text_chunks(text_chunks):
+    
     embeddings = OpenAIEmbeddings()
-
-    knowledge_base = Chroma.from_documents(text_chunks, embeddings)
+    knowledge_base = Pinecone.from_documents(text_chunks, embeddings, index_name=index_name)
+    # knowledge_base = Chroma.from_documents(text_chunks, embeddings)
     return knowledge_base
 
 def query_text(query, knowledge_base, chat_history=None):
-    retriever = knowledge_base.as_retriever(search_type="mmr", search_kwargs={"k": 3})
+    retriever = knowledge_base.as_retriever(search_type="similarity", search_kwargs={"k": 3})
+
     llm = OpenAI(model_name="gpt-4")
     qa = ConversationalRetrievalChain.from_llm(llm, retriever)
     if isinstance(query, list):
@@ -215,18 +231,22 @@ def openaipricing(nb_tokens_used: int, model_name: str = None, embeddings=False,
 def load_pdf_temporarily(url):
     from langchain.document_loaders import PyPDFLoader
     # Download the PDF file
-
+    
     response = requests.get(url)
-
+    
     file_path = "temp.pdf"
-
+    
     with open(file_path, 'wb') as f:
         f.write(response.content)
-
-    if needs_ocr(f):
-        text = extract_pdf_content_ocr(f)
-        with open(file_path, 'wb') as f:
-            f.write(text)
+    
+    # no need to open the file for needs_ocr, it can handle a file path directly
+    if needs_ocr(file_path):
+        with open(file_path, 'rb') as f_ocr:
+            text = extract_pdf_content_ocr(f_ocr)
+        # Overwrite the file with OCR extracted content
+        with open(file_path, 'wb') as f_write:
+            f_write.write(text)
+    
     # Process the PDF
     try:
         document = PyPDFLoader(file_path).load()
@@ -237,11 +257,38 @@ def load_pdf_temporarily(url):
             os.remove(file_path)
         else:
             print("The file does not exist")
+
 def find_complaint(dictionary_list):
     for dictionary in dictionary_list:
         if dictionary.get('title') == 'complaint':
             return dictionary
     return None
+import pickle
+
+def load_pickle_data(filepath):
+    """
+    This function loads data from a pickle file.
+
+    Parameters:
+    filepath (str): The path of the pickle file.
+
+    Returns:
+    data: The data loaded from the pickle file.
+
+    Business Logic:
+    This function uses Python's built-in 'pickle' module to deserialize
+    data from the pickle file. This can be useful when you have preprocessed
+    or transformed data that you want to reuse across different scripts or
+    sessions. By loading this data from a pickle file, we can avoid
+    having to redo potentially expensive computations or fetch data
+    from a remote source, which can make our program more efficient and
+    faster to develop.
+    """
+    
+    with open(filepath, 'rb') as f:
+        data = pickle.load(f)
+    
+    return data
 
 # Example usage:
 

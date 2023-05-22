@@ -18,41 +18,43 @@ import fitz  # PyMuPDF
 
 def needs_ocr(pdf_file):
     """
-
-    :param pdf_file: Bytes Content of PDF File
+    :param pdf_file: Bytes Content of PDF File or path to the file
     :return:
     """
-    # response = requests.get(pdf_url)
-    # pdf_file = BytesIO(response.content)
-    # if isinstance(pdf_file, str):
-    #     with open(pdf_file, "rb") as fp:
-    #         pdf_file = fp.read()
-
-    doc = fitz.open(stream=pdf_file, filetype="pdf")
-
+    
+    if isinstance(pdf_file, str):
+        # If a filepath is given
+        with open(pdf_file, "rb") as fp:
+            pdf_content = fp.read()
+        doc = fitz.open(stream=pdf_content, filetype="pdf")
+    elif isinstance(pdf_file, (bytes, bytearray)):
+        # If a bytes-like object is given
+        doc = fitz.open(stream=pdf_file, filetype="pdf")
+    else:
+        raise TypeError('pdf_file must be a string representing a file path or a bytes-like object representing the content of a PDF file')
+    
     text_threshold = 50  # Minimum number of non-whitespace characters to consider a page as text-based
     image_pages = 0
     text_pages = 0
-
+    
     for page_num in range(len(doc)):
-
+        
         page = doc.load_page(page_num)
         text = page.get_text()
-
+        
         # Count non-whitespace characters
         non_whitespace_chars = sum(1 for char in text if not char.isspace())
-
+        
         if non_whitespace_chars < text_threshold:
             image_pages += 1
         else:
             text_pages += 1
-
+    
     # If the majority of pages are image-based or have little text content, the PDF might need OCR
     if image_pages > text_pages:
         return True
     else:
         return False
-
 
 def extract_pdf_content_ocr(pdf_file):
     """
