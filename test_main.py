@@ -25,6 +25,7 @@ for case_data in tqdm(case_data_list, desc="Answering Questions", ascii=False, n
     geographic_markets = "NA"
     product_markets = "NA"
     signing_date = "NA"
+    chat_history = []
     if complaint:
         complaint_link = complaint["attachments"][0]["url"]
 
@@ -35,7 +36,7 @@ for case_data in tqdm(case_data_list, desc="Answering Questions", ascii=False, n
         texts = split_document_into_chunks(documents)
         knowledge_base = create_embeddings_from_text_chunks(texts)
         # merger type
-        chat_history = []
+
 
 
         merger_type_query = query_text("What type of merger does the complaint challenge (Horizontal or Vertical)? Give a one word answer.", knowledge_base, chat_history)
