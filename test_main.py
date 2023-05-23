@@ -73,14 +73,14 @@ for case_data in tqdm(case_data_list, desc="Answering Questions", ascii=False, n
         chat_history += signing_date_query[-1]
 
     case_data.update({
-        "Merger Type": merger_type,
-        "Consummation Status": consumation,
-        "Industry": industry,
-        "Relevant Geographic Markets": geographic_markets,
-        "Relevant Product Markets": product_markets,
-        "Signing Date": signing_date
-
-    })
+            "Merger Type": merger_type,
+            "Consummation Status": consumation,
+            "Industry": industry,
+            "Relevant Geographic Markets": geographic_markets,
+            "Relevant Product Markets": product_markets,
+            "Signing Date": signing_date
+    
+        })
 
 with open(f"doj-data-{datetime.date.today().strftime('%m.%d.%Y')}", "wb") as f:
     pickle.dump(case_data_list, f)
