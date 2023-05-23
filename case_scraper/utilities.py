@@ -150,6 +150,7 @@ questions_list = ["Will the merger harm consumers? If so how? Provide a comprehe
 def create_embeddings_from_text_chunks(text_chunks):
     
     embeddings = OpenAIEmbeddings()
+   
     knowledge_base = Pinecone.from_documents(text_chunks, embeddings, index_name=index_name)
     # knowledge_base = Chroma.from_documents(text_chunks, embeddings) if using chroma, make sure to modify the search type to mmr in the query_text function.
     return knowledge_base
@@ -159,7 +160,7 @@ def query_text(query, knowledge_base, chat_history=None, vector_db_type=None):
         if vector_db_type.lower() == "chroma":
             retriever = knowledge_base.as_retriever(search_type="mmr", search_kwargs={"k": 3})
     else:
-        retriever = knowledge_base.as_retriever(search_type="similarity", search_kwargs={"k": 10})
+        retriever = knowledge_base.as_retriever(search_type="similarity", search_kwargs={"k": 5})
     llm = OpenAI(model_name="gpt-4")
     qa = ConversationalRetrievalChain.from_llm(llm, retriever)
     if isinstance(query, list):
@@ -168,13 +169,13 @@ def query_text(query, knowledge_base, chat_history=None, vector_db_type=None):
         answers = []
         for question in query:
             with get_openai_callback() as cb:
-                result = qa({"question":question, "chat_history":chat_history})
+                result = qa({"question":question + " If you do not know the answer, state N/A", "chat_history":chat_history})
                 chat_history += result["chat_history"]
                 answers.append((question, result["answer"], cb))
         return answers, result["chat_history"]
     else:
         with get_openai_callback() as cb:
-            result = qa({"question":query, "chat_history":chat_history})
+            result = qa({"question":query + " If you do not know the answer, state N/A", "chat_history":chat_history})
         return (query, result["answer"], cb), result["chat_history"]
 
 def openaipricing(nb_tokens_used: int, model_name: str = None, embeddings=False, chatgpt=False) -> float:

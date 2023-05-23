@@ -49,39 +49,39 @@ for case_data in tqdm(case_data_list, desc="Answering Questions", ascii=False, n
         tokens_used += consumation_query[0][-1].total_tokens
         chat_history += consumation_query[-1]
         # industry
-        industry_query = query_text("In what industry do the merging parties operate? Only provide the industry name.", knowledge_base,
+        industry_query = query_text("Name the Defendants' industry.", knowledge_base,
                                        chat_history)
         industry  = industry_query[0][1]
         tokens_used += industry_query[0][-1].total_tokens
         chat_history += industry_query[-1]
         # relevant geographic markets
-        geographic_markets_query = query_text("What are the relevant geographic markets alleged in the complaint? Only provide the relevant geographic markets.", knowledge_base,
+        geographic_markets_query = query_text("List the geographic markets alleged in the complaint.", knowledge_base,
                                               chat_history)
         geographic_markets  = geographic_markets_query[0][1]
         tokens_used += geographic_markets_query[0][-1].total_tokens
         chat_history += geographic_markets_query[-1]
         # relevant product markets
-        product_markets_query = query_text("What are the relevant product markets alleged in the complaint? Only provide the relevant product markets.", knowledge_base,
+        product_markets_query = query_text("List the product markets alleged in the complaint.", knowledge_base,
                                            chat_history)
         product_markets = product_markets_query[0][1]
         tokens_used += product_markets_query[0][-1].total_tokens
         chat_history += product_markets_query[-1]
         # merger signing date
-        signing_date_query = query_text("When did the defendants sign their agreement? Give only the date of signing", knowledge_base,
+        signing_date_query = query_text("Specify the date that defendants signed their agreement or merger?", knowledge_base,
                                            chat_history)
         signing_date = signing_date_query[0][1]
         tokens_used += signing_date_query[0][-1].total_tokens
         chat_history += signing_date_query[-1]
 
-    case_data.update({
-            "Merger Type": merger_type,
-            "Consummation Status": consumation,
-            "Industry": industry,
-            "Relevant Geographic Markets": geographic_markets,
-            "Relevant Product Markets": product_markets,
-            "Signing Date": signing_date
-    
-        })
+        case_data.update({
+                "Merger Type": merger_type,
+                "Consummation Status": consumation,
+                "Industry": industry,
+                "Relevant Geographic Markets": geographic_markets,
+                "Relevant Product Markets": product_markets,
+                "Signing Date": signing_date
+        
+            })
 
 with open(f"doj-data-{datetime.date.today().strftime('%m.%d.%Y')}", "wb") as f:
     pickle.dump(case_data_list, f)
