@@ -21,12 +21,22 @@ def needs_ocr(pdf_file):
     :param pdf_file: Bytes Content of PDF File or path to the file
     :return:
     """
-    
+
+
     if isinstance(pdf_file, str):
-        # If a filepath is given
-        with open(pdf_file, "rb") as fp:
-            pdf_content = fp.read()
-        doc = fitz.open(stream=pdf_content, filetype="pdf")
+        if pdf_file.startswith("http"):
+            response = requests.get(pdf_file)
+            file_path = "temp.pdf"
+            with open(file_path, 'wb') as f:
+                f.write(response.content)
+            with open(file_path, "rb") as fp:
+                pdf_content = fp.read()
+            doc = fitz.open(stream=pdf_content, filetype="pdf")
+        else:
+            # If a filepath is given
+            with open(pdf_file, "rb") as fp:
+                pdf_content = fp.read()
+            doc = fitz.open(stream=pdf_content, filetype="pdf")
     elif isinstance(pdf_file, (bytes, bytearray)):
         # If a bytes-like object is given
         doc = fitz.open(stream=pdf_file, filetype="pdf")

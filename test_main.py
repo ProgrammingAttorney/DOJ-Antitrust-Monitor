@@ -15,9 +15,11 @@ import openai
 from case_scraper.scraper import *
 from pprint import pprint
 
-case_data_list = load_pickle_data("doj-data-5.18.pkl")
+case_data_list = load_pickle_data("doj-data-05.23.2023")
 tokens_used = 0
-for case_data in tqdm(case_data_list, desc="Answering Questions", ascii=False, ncols=75, bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}"):
+for idx, case_data in enumerate(tqdm(case_data_list, desc="Answering Questions", ascii=False, ncols=75, bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}")):
+    if idx < 114:
+        continue
     complaint = find_complaint(case_data["documents"])
     merger_type = "NA"
     consumation = "NA"
@@ -28,7 +30,8 @@ for case_data in tqdm(case_data_list, desc="Answering Questions", ascii=False, n
     chat_history = []
     if complaint:
         complaint_link = complaint["attachments"][0]["url"]
-
+        if needs_ocr(complaint_link): ##TODO: will need to fix this and figure out a way to split these OCR'd documents into chunks.
+            continue
 
         documents = load_pdf_temporarily(complaint_link)
 
@@ -49,19 +52,19 @@ for case_data in tqdm(case_data_list, desc="Answering Questions", ascii=False, n
         tokens_used += consumation_query[0][-1].total_tokens
         chat_history += consumation_query[-1]
         # industry
-        industry_query = query_text("Name the Defendants' industry.", knowledge_base,
+        industry_query = query_text("Name the Defendants' industry. Only include the industry name in your response.", knowledge_base,
                                        chat_history)
         industry  = industry_query[0][1]
         tokens_used += industry_query[0][-1].total_tokens
         chat_history += industry_query[-1]
         # relevant geographic markets
-        geographic_markets_query = query_text("List the geographic markets alleged in the complaint.", knowledge_base,
+        geographic_markets_query = query_text("List the relevant geographic markets alleged in the complaint.", knowledge_base,
                                               chat_history)
         geographic_markets  = geographic_markets_query[0][1]
         tokens_used += geographic_markets_query[0][-1].total_tokens
         chat_history += geographic_markets_query[-1]
         # relevant product markets
-        product_markets_query = query_text("List the product markets alleged in the complaint.", knowledge_base,
+        product_markets_query = query_text("List the relevant product markets alleged in the complaint.", knowledge_base,
                                            chat_history)
         product_markets = product_markets_query[0][1]
         tokens_used += product_markets_query[0][-1].total_tokens
@@ -73,7 +76,7 @@ for case_data in tqdm(case_data_list, desc="Answering Questions", ascii=False, n
         tokens_used += signing_date_query[0][-1].total_tokens
         chat_history += signing_date_query[-1]
 
-        case_data.update({
+    case_data.update({
                 "Merger Type": merger_type,
                 "Consummation Status": consumation,
                 "Industry": industry,

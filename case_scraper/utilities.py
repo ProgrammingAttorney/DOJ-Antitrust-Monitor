@@ -11,18 +11,18 @@ from langchain.chains import ConversationalRetrievalChain
 # from langchain.text_splitter import CharacterTextSplitter
 from langchain.llms import OpenAI
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Pinecone
+from langchain.vectorstores import Pinecone, Chroma
 from langchain.callbacks import get_openai_callback
-import pinecone
+# import pinecone
 
-pinecone_API_KEY = "71443f75-d244-4466-b33e-ea17b36f6a94"
-pinecone.init(
-        api_key=pinecone_API_KEY,
-        environment="us-west4-gcp-free"
-        )
-
-index_name = "doj-docs"
-
+# pinecone_API_KEY = "71443f75-d244-4466-b33e-ea17b36f6a94"
+# pinecone.init(
+#         api_key=pinecone_API_KEY,
+#         environment="us-west4-gcp-free"
+#         )
+#
+# index_name = "doj-docs"
+#
 
 
 
@@ -151,16 +151,18 @@ def create_embeddings_from_text_chunks(text_chunks):
     
     embeddings = OpenAIEmbeddings()
    
-    knowledge_base = Pinecone.from_documents(text_chunks, embeddings, index_name=index_name)
-    # knowledge_base = Chroma.from_documents(text_chunks, embeddings) if using chroma, make sure to modify the search type to mmr in the query_text function.
+    # knowledge_base = Pinecone.from_documents(text_chunks, embeddings, index_name=index_name)
+    knowledge_base = Chroma.from_documents(text_chunks, embeddings) #if using chroma, make sure to modify the search type to mmr in the query_text function.
+
     return knowledge_base
 
-def query_text(query, knowledge_base, chat_history=None, vector_db_type=None):
-    if vector_db_type:
-        if vector_db_type.lower() == "chroma":
-            retriever = knowledge_base.as_retriever(search_type="mmr", search_kwargs={"k": 3})
-    else:
-        retriever = knowledge_base.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+def query_text(query, knowledge_base, chat_history=None):
+    # if vector_db_type:
+    #     if vector_db_type.lower() == "chroma":
+    retriever = knowledge_base.as_retriever(search_type="mmr", search_kwargs={"k":5})
+
+    # else:
+    #     retriever = knowledge_base.as_retriever(search_type="similarity", search_kwargs={"k": 5})
     llm = OpenAI(model_name="gpt-4")
     qa = ConversationalRetrievalChain.from_llm(llm, retriever)
     if isinstance(query, list):
@@ -247,6 +249,7 @@ def load_pdf_temporarily(url):
     if needs_ocr(file_path):
         with open(file_path, 'rb') as f_ocr:
             text = extract_pdf_content_ocr(f_ocr)
+            text = text.encode()
         # Overwrite the file with OCR extracted content
         with open(file_path, 'wb') as f_write:
             f_write.write(text)
@@ -255,6 +258,9 @@ def load_pdf_temporarily(url):
     try:
         document = PyPDFLoader(file_path).load()
         return document
+
+    except:
+        return text
     finally:
         # Delete the file
         if os.path.exists(file_path):
