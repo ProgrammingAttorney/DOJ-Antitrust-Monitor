@@ -1,4 +1,6 @@
 import datetime
+
+import langchain.schema
 import pandas as pd
 import requests
 import openai
@@ -9,7 +11,7 @@ from collections import Counter
 from langchain.chains import ConversationalRetrievalChain
 # from langchain.indexes import VectorstoreIndexCreator
 # from langchain.text_splitter import CharacterTextSplitter
-from langchain.llms import OpenAI
+from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Pinecone, Chroma
 from langchain.callbacks import get_openai_callback
@@ -129,13 +131,17 @@ def preprocess_text(text):
 def split_document_into_chunks(document):
 
     from langchain.text_splitter import CharacterTextSplitter
+
     text_splitter = CharacterTextSplitter(
         separator="\n",
         chunk_size=1000,
         chunk_overlap=200,
         length_function=len
     )
-    chunks = text_splitter.split_documents(document)
+    if isinstance(document, str):
+        chunks = text_splitter.split_text(document)
+    else:
+        chunks = text_splitter.split_documents(document)
     return chunks
 questions_list = ["Will the merger harm consumers? If so how? Provide a comprehensive answer"
 "Will the merger reduce innovation? If so how? Provide a comprehensive answer",
@@ -150,9 +156,14 @@ questions_list = ["Will the merger harm consumers? If so how? Provide a comprehe
 def create_embeddings_from_text_chunks(text_chunks):
     
     embeddings = OpenAIEmbeddings()
-   
     # knowledge_base = Pinecone.from_documents(text_chunks, embeddings, index_name=index_name)
-    knowledge_base = Chroma.from_documents(text_chunks, embeddings) #if using chroma, make sure to modify the search type to mmr in the query_text function.
+    if isinstance(text_chunks[0], langchain.schema.Document):
+        knowledge_base = Chroma.from_documents(text_chunks,
+                                               embeddings)  # if using chroma, make sure to modify the search type to mmr in the query_text function.
+    else:
+        knowledge_base = Chroma.from_texts(text_chunks, embeddings)
+
+
 
     return knowledge_base
 
@@ -163,8 +174,10 @@ def query_text(query, knowledge_base, chat_history=None):
 
     # else:
     #     retriever = knowledge_base.as_retriever(search_type="similarity", search_kwargs={"k": 5})
-    llm = OpenAI(model_name="gpt-4")
+    llm = ChatOpenAI(model_name="gpt-4")
+
     qa = ConversationalRetrievalChain.from_llm(llm, retriever)
+ 
     if isinstance(query, list):
 
         chat_history = []
@@ -258,8 +271,13 @@ def load_pdf_temporarily(url):
     try:
         document = PyPDFLoader(file_path).load()
         return document
-
     except:
+        import fitz
+        doc = fitz.open(stream=open(file_path, "rb").read(), filetype="pdf")
+        text = ""
+        for page_num in range(len(doc)):
+            page = doc.load_page(page_num)
+            text += page.get_text()
         return text
     finally:
         # Delete the file

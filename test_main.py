@@ -42,12 +42,13 @@ for idx, case_data in enumerate(tqdm(case_data_list, desc="Answering Questions",
 
 
 
-        merger_type_query = query_text("What type of merger does the complaint challenge (Horizontal or Vertical)? Give a one word answer.", knowledge_base, chat_history)
+        # merger_type_query = query_text("What type of merger does the complaint challenge (Horizontal or Vertical)? Give a one word answer.", knowledge_base, chat_history)
+        merger_type_query = query_text("What type of agreement does the complaint challenge? Give a one word answer.", knowledge_base, chat_history)
         merger_type = merger_type_query[0][1]
         tokens_used += merger_type_query[0][-1].total_tokens
         chat_history += merger_type_query[-1]
         # consumated / unconsumated
-        consumation_query = query_text("Is the complaint challenging a consummated or unconsummated merger? Give a one word answer.", knowledge_base, chat_history)
+        consumation_query = query_text("Is the complaint challenging a consummated or unconsummated merger? Give a one word answer. If the complaint is not challenging a merger, answer with N/A", knowledge_base, chat_history)
         consumation  = consumation_query[0][1]
         tokens_used += consumation_query[0][-1].total_tokens
         chat_history += consumation_query[-1]
@@ -58,19 +59,19 @@ for idx, case_data in enumerate(tqdm(case_data_list, desc="Answering Questions",
         tokens_used += industry_query[0][-1].total_tokens
         chat_history += industry_query[-1]
         # relevant geographic markets
-        geographic_markets_query = query_text("List the relevant geographic markets alleged in the complaint.", knowledge_base,
+        geographic_markets_query = query_text("List the relevant geographic markets.", knowledge_base,
                                               chat_history)
         geographic_markets  = geographic_markets_query[0][1]
         tokens_used += geographic_markets_query[0][-1].total_tokens
         chat_history += geographic_markets_query[-1]
         # relevant product markets
-        product_markets_query = query_text("List the relevant product markets alleged in the complaint.", knowledge_base,
+        product_markets_query = query_text("List the relevant product markets.", knowledge_base,
                                            chat_history)
         product_markets = product_markets_query[0][1]
         tokens_used += product_markets_query[0][-1].total_tokens
         chat_history += product_markets_query[-1]
         # merger signing date
-        signing_date_query = query_text("Specify the date that defendants signed their agreement or merger?", knowledge_base,
+        signing_date_query = query_text("Specify the date that defendants signed or announced their agreement, merger or transaction.", knowledge_base,
                                            chat_history)
         signing_date = signing_date_query[0][1]
         tokens_used += signing_date_query[0][-1].total_tokens
