@@ -34,49 +34,50 @@ os.environ["OPENAI_API_KEY"] = "sk-9N7GiF8Vnsj4QD71zIk0T3BlbkFJJ34etuQ1Uc6cH8wE0
 ## for final judgments, always check the dates of the final judgment document and take the later date for the timeline calculation.
 #TODO: create a function that feeds the pdf text in chatgpt and extracts the relevant product definition, the geographic market, the names of the attorneys, and complete list of plaintiffs.
 
-def unpackColumnDict(col):
+import pandas as pd
+from typing import List, Dict
+def unpack_column_dict(col: List[Dict]) -> str:
     """
     Unpack df column dictionary into a string.
     :param col: DataFrame column containing document dictionaries
     :return: string, concatenated document titles and dates
     """
-    # Place the code for unpackColumnDict function here
     string = ""
     # Remove duplicate rows
     if pd.isna(col).all():
         return col
     for document_dict in col:
-        document_dict["docTitle"] = document_dict["docTitle"].replace("\n", "")
-        string += f"{document_dict['docTitle']} - {document_dict['docDateObj']}\n\n"
+        if "docTitle" in document_dict and "docDateObj" in document_dict:
+            document_dict["docTitle"] = document_dict["docTitle"].replace("\n", "")
+            string += f"{document_dict['docTitle']} - {document_dict['docDateObj']}\n\n"
     return string
-
-def unpackKeyDocsDicts(col):
+def unpack_key_docs(col: Dict[str, List[Dict]]) -> str:
     """
     Unpack df column dictionary into a string.
-    :param col: DataFrame column containing document dictionaries
+    :param col: DataFrame column dictionary containing document dictionaries
     :return: string, concatenated document titles and dates
     """
-    # Place the code for unpackKeyDocsDicts function here
-    string = ""
-    complaints = col["complaint"]
-    jdmt = col["judgment"]
-    settle = col["settlements"]
-    dismiss = col['dismiss']
-
-    for doc_dict in complaints + jdmt + settle + dismiss:
-        doc_dict["docTitle"] = doc_dict["docTitle"].replace("\n", "")
-        string += f"{doc_dict['docTitle']} - {doc_dict['docDateObj']}\n"
-
+    complaints = col.get("complaint", [])
+    jdmt = col.get("judgment", [])
+    settle = col.get("settlements", [])
+    dismiss = col.get('dismiss', [])
+    documents = complaints + jdmt + settle + dismiss
+    documents = [doc for doc in documents if "docTitle" in doc and "docDateObj" in doc]
+    string = '\n'.join([f"{doc['docTitle'].replace('\n', '')} - {doc['docDateObj']}" for doc in documents])
     return string
-def deDupString(string):
+
+import re
+from collections import OrderedDict
+def dedup_string(string: str) -> str:
     """
     Remove duplicate words in a given string.
     :param string: input string
     :return: string, deduplicated string
     """
-    # Place the code for deDupString function here
-    input_words = string.split(" ")
-    unique_words = Counter(input_words)
+    # Remove punctuation and convert to lowercase
+    string = re.sub(r'[^\w\s]', '', string.lower())
+    input_words = string.split()
+    unique_words = OrderedDict.fromkeys(input_words)
     deduplicated_string = " ".join(unique_words.keys())
     return deduplicated_string
 
@@ -101,12 +102,21 @@ def find_president(date: datetime.datetime):
 
 # Other utility functions should be placed here
 
-def is_pdf_link(url):
+import requests
+def is_pdf_link(url: str) -> bool:
+    """
+    Check if the given URL points to a PDF file.
+    :param url: str, the URL to check
+    :return: bool, True if the URL points to a PDF, False otherwise
+    """
     try:
+        # Send a HEAD request to get the response headers
         response = requests.head(url, allow_redirects=True)
         content_type = response.headers.get('Content-Type', '').lower()
+        # Check if the Content-Type header indicates a PDF file
         return content_type == 'application/pdf'
     except requests.RequestException:
+        # Return False if any errors occur while requesting the URL
         return False
 
 
@@ -128,10 +138,13 @@ def preprocess_text(text):
     return paragraphs
 #
 # Split the document into paragraphs
-def split_document_into_chunks(document):
-
-    from langchain.text_splitter import CharacterTextSplitter
-
+from langchain.text_splitter import CharacterTextSplitter
+def split_document_into_chunks(document: str or list) -> list:
+    """
+    Split the given document into chunks of a specified size.
+    :param document: str or list, the document to be split
+    :return: list, the chunks of the document
+    """
     text_splitter = CharacterTextSplitter(
         separator="\n",
         chunk_size=1000,
@@ -152,6 +165,14 @@ questions_list = ["Will the merger harm consumers? If so how? Provide a comprehe
                   "what are the relevant product markets alleged in the complaint? Provide a comprehensive answer.",
                   "what are the relevant geographic markets alleged in the complaint? Provide a comprehensive answer.",
                   "what remedies did the merging parties propose? Provide a comprehensive answer."]
+
+
+def fine_tune_embeddings(embeddings, documents, text_processor, epochs=10):
+    # Tokenize and preprocess the documents
+    processed_docs = [text_processor.process(doc) for doc in documents]
+    # Fine-tune the embeddings using the processed documents
+    embeddings.finetune(processed_docs, epochs=epochs)
+
 # Create embeddings using the OpenAI API
 def create_embeddings_from_text_chunks(text_chunks):
     

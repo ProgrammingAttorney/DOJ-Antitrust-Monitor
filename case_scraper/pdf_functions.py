@@ -15,108 +15,62 @@ from pdf2image import convert_from_bytes
 
 
 import fitz  # PyMuPDF
-
 def needs_ocr(pdf_file):
     """
-    :param pdf_file: Bytes Content of PDF File or path to the file
-    :return:
+    Determine whether a PDF file needs OCR (Optical Character Recognition).
+
+    :param pdf_file: Bytes Content of PDF File or path to the file.
+    :return: A boolean indicating whether the PDF file needs OCR.
     """
-
-
     if isinstance(pdf_file, str):
         if pdf_file.startswith("http"):
             response = requests.get(pdf_file)
-            file_path = "temp.pdf"
-            with open(file_path, 'wb') as f:
-                f.write(response.content)
-            with open(file_path, "rb") as fp:
-                pdf_content = fp.read()
-            doc = fitz.open(stream=pdf_content, filetype="pdf")
+            pdf_content = response.content
         else:
-            # If a filepath is given
             with open(pdf_file, "rb") as fp:
                 pdf_content = fp.read()
-            doc = fitz.open(stream=pdf_content, filetype="pdf")
     elif isinstance(pdf_file, (bytes, bytearray)):
-        # If a bytes-like object is given
-        doc = fitz.open(stream=pdf_file, filetype="pdf")
+        pdf_content = pdf_file
     else:
         raise TypeError('pdf_file must be a string representing a file path or a bytes-like object representing the content of a PDF file')
-    
-    text_threshold = 50  # Minimum number of non-whitespace characters to consider a page as text-based
-    image_pages = 0
-    text_pages = 0
-    
-    for page_num in range(len(doc)):
-        
-        page = doc.load_page(page_num)
-        text = page.get_text()
-        
-        # Count non-whitespace characters
-        non_whitespace_chars = sum(1 for char in text if not char.isspace())
-        
-        if non_whitespace_chars < text_threshold:
-            image_pages += 1
-        else:
-            text_pages += 1
-    
-    # If the majority of pages are image-based or have little text content, the PDF might need OCR
-    if image_pages > text_pages:
-        return True
-    else:
-        return False
+
+    doc = fitz.open(stream=pdf_content, filetype="pdf")
+    text_threshold = 50
+    image_pages = sum(1 for page_num in range(len(doc)) if len(doc.load_page(page_num).get_text().strip()) < text_threshold)
+    return image_pages > len(doc) / 2
+
 
 def extract_pdf_content_ocr(pdf_file):
     """
-    Function designed to perform OCR on pdf images. This needs pytesseract, tesseract, and poppler to be installed.
-    :param pdf_file: Bytes Content of pdf File
-    :return:
-    """
-    # Convert PDF pages to images
-    images = convert_from_bytes(pdf_file.read())
-    
-    # Perform OCR on the images using pytesseract
-    text = ""
-    for image in images:
-        text += pytesseract.image_to_string(image)
-        # print(text)
-    
-    return text
+    Perform OCR on pdf images.
 
-# def extract_pdf_content(pdf_url):
-#     response = requests.get(pdf_url)
-#     pdf_file = BytesIO(response.content)
-#     reader = PyPDF2.PdfFileReader(pdf_file)
-#     text = ""
-#     for page_num in range(reader.numPages):
-#         page = reader.getPage(page_num)
-#         text += page.extractText()
-#         print(text)
-#     return text
+    :param pdf_file: Bytes Content of pdf File.
+    :return: A string containing the text extracted from the PDF file.
+    """
+    images = convert_from_bytes(pdf_file.read())
+    return "".join(pytesseract.image_to_string(image) for image in images)
+
+
 
 def pdf_to_text(file):
     """
     Convert a given PDF file to text.
+
     :param file: A file-like object representing the PDF file.
     :return: A string containing the extracted text.
     """
     reader = PyPDF2.PdfFileReader(file)
-    text = ""
-
-    for page_num in range(reader.numPages):
-        text += reader.getPage(page_num).extractText()
-
+    text = "".join(reader.getPage(page_num).extractText() for page_num in range(reader.numPages))
     return text
-
 def download_pdf(url):
     """
     Download a PDF file from a given URL.
+
     :param url: A string containing the URL of the PDF file.
     :return: A file-like object representing the downloaded PDF file.
     """
     response = requests.get(url)
     pdf_file = BytesIO(response.content)
-
     return pdf_file
 
 def extract_text_from_pdf(pdf_url):
