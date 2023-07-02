@@ -1,7 +1,6 @@
 import pandas as pd
 from datetime import datetime
 import regex as re
-from case_scraper.scraper import collect_HTML_tables, extract_cases, extract_case_information
 from case_scraper.extractor import find_president, unpackColumnDict
 from case_scraper.pdf_functions import get_document_date
 

@@ -1,19 +1,16 @@
 import datetime
 
 import langchain.schema
-import pandas as pd
-import requests
 import openai
 import regex as re
 import os
-from .pdf_functions import needs_ocr, extract_pdf_content_ocr
-from collections import Counter
+# from case_scraper.pdf_functions import needs_ocr, extract_pdf_content_ocr
 from langchain.chains import ConversationalRetrievalChain
 # from langchain.indexes import VectorstoreIndexCreator
 # from langchain.text_splitter import CharacterTextSplitter
 from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Pinecone, Chroma
+from langchain.vectorstores import Chroma
 from langchain.callbacks import get_openai_callback
 # import pinecone
 
@@ -63,7 +60,7 @@ def unpack_key_docs(col: Dict[str, List[Dict]]) -> str:
     dismiss = col.get('dismiss', [])
     documents = complaints + jdmt + settle + dismiss
     documents = [doc for doc in documents if "docTitle" in doc and "docDateObj" in doc]
-    string = '\n'.join([f"{doc['docTitle'].replace('\n', '')} - {doc['docDateObj']}" for doc in documents])
+    string = '\n'.join(["{0} - {1}".format(doc['docTitle'].replace('\n', ''),doc['docDateObj']) for doc in documents])
     return string
 
 import re
@@ -268,44 +265,44 @@ def openaipricing(nb_tokens_used: int, model_name: str = None, embeddings=False,
 
     else:
         raise ValueError("Invalid option")
-def load_pdf_temporarily(url):
-    from langchain.document_loaders import PyPDFLoader
-    # Download the PDF file
-    
-    response = requests.get(url)
-    
-    file_path = "temp.pdf"
-    
-    with open(file_path, 'wb') as f:
-        f.write(response.content)
-    
-    # no need to open the file for needs_ocr, it can handle a file path directly
-    if needs_ocr(file_path):
-        with open(file_path, 'rb') as f_ocr:
-            text = extract_pdf_content_ocr(f_ocr)
-            text = text.encode()
-        # Overwrite the file with OCR extracted content
-        with open(file_path, 'wb') as f_write:
-            f_write.write(text)
-    
-    # Process the PDF
-    try:
-        document = PyPDFLoader(file_path).load()
-        return document
-    except:
-        import fitz
-        doc = fitz.open(stream=open(file_path, "rb").read(), filetype="pdf")
-        text = ""
-        for page_num in range(len(doc)):
-            page = doc.load_page(page_num)
-            text += page.get_text()
-        return text
-    finally:
-        # Delete the file
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        else:
-            print("The file does not exist")
+# def load_pdf_temporarily(url):
+#     from langchain.document_loaders import PyPDFLoader
+#     # Download the PDF file
+#
+#     response = requests.get(url)
+#
+#     file_path = "temp.pdf"
+#
+#     with open(file_path, 'wb') as f:
+#         f.write(response.content)
+#
+#     # no need to open the file for needs_ocr, it can handle a file path directly
+#     if needs_ocr(file_path):
+#         with open(file_path, 'rb') as f_ocr:
+#             text = extract_pdf_content_ocr(f_ocr)
+#             text = text.encode()
+#         # Overwrite the file with OCR extracted content
+#         with open(file_path, 'wb') as f_write:
+#             f_write.write(text)
+#
+#     # Process the PDF
+#     try:
+#         document = PyPDFLoader(file_path).load()
+#         return document
+#     except:
+#         import fitz
+#         doc = fitz.open(stream=open(file_path, "rb").read(), filetype="pdf")
+#         text = ""
+#         for page_num in range(len(doc)):
+#             page = doc.load_page(page_num)
+#             text += page.get_text()
+#         return text
+#     finally:
+#         # Delete the file
+#         if os.path.exists(file_path):
+#             os.remove(file_path)
+#         else:
+#             print("The file does not exist")
 
 def find_complaint(dictionary_list):
     for dictionary in dictionary_list:

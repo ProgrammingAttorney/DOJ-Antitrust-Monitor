@@ -1,19 +1,8 @@
-import os
-import json
-import time
-from langchain.embeddings.openai import OpenAIEmbeddings
-
 from case_scraper.utilities import *
 from tqdm import tqdm
 from case_scraper.pdf_functions import *
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.vectorstores import ElasticVectorSearch, Pinecone, Weaviate, FAISS
-from langchain.chains.question_answering import load_qa_chain
-from langchain.llms import OpenAI
-import openai
 
 from case_scraper.scraper import *
-from pprint import pprint
 
 case_data_list = load_pickle_data("doj-data-05.23.2023")
 tokens_used = 0

@@ -1,315 +1,318 @@
-import datetime
-import re
 import requests
 import urllib
-from .pdf_functions import  extract_text_from_pdf
-from.utilities import is_pdf_link
+import datetime
+import regex as re
 from bs4 import BeautifulSoup
-import pdb
-#Scraper is tailored to only extract merger cases
+from .utilities import is_pdf_link
 
-
-
-BASE_URL = "https://www.justice.gov/"
-def collect_HTML_tables(start_page=0, end_page=23):
+class CaseScraper:
     """
-    Function to go through the DOJ's civil merger cases dating back to 200 and extract the tr tags from the website.
-    Each TR Tag represents a case
-    :param start_page: int, the starting page number
-    :param end_page: int, the ending page number
-    :return: list, a list of tr tags, with each tag representing a case
+    A class used to scrape case data from the Department of Justice website.
+
+    ...
+
+    Attributes
+    ----------
+    BASE_URL : str
+        The base URL for the Department of Justice website.
+    start_page : int
+        The first page to scrape.
+    end_page : int
+        The last page to scrape.
+
+    Methods
+    -------
+    collect_HTML_tables():
+        Collects HTML tables from the Department of Justice website.
+    extract_case_data_from_row(case_row, details=["title", "date", "type", "federal_court", "industry"]):
+        Extracts case data from a row of an HTML table.
+    extract_case_details_from_casepage(casepage_link, details=["markets", "violation", "documents"]):
+        Extracts case details from a case page.
+    get_document_details_from_document_page(doc_page_link, details=["date", "type", "attachments"]):
+        Gets document details from a document page.
+    find_document_dates(case_link):
+        Finds the dates of documents associated with a case.
+    get_document_date(doc):
+        Gets the date of a document.
+    remove_extra_whitespace(string):
+        Removes extra whitespace from a string.
+    unpack_column_dict(column):
+        Unpacks a column of a DataFrame that contains dictionaries.
+    sort_documents(doc_list):
+        Sorts a list of documents by date.
     """
-    case_list = []
-    with requests.Session() as session:
-        for i in range(start_page, end_page):
-            url = f"https://www.justice.gov/atr/antitrust-case-filings?f%5B0%5D=field_case_type%3Acivil_merger&page={i}"
-            try:
-                response = session.get(url)
-                response.raise_for_status()
-                soup = BeautifulSoup(response.text, "html.parser")
-                case_list.extend(soup.find_all("tr")[1:])
-            except requests.HTTPError as e:
-                print(f"Unable to fetch data from {url}. Error: {e}")
-    return case_list
-
-
-def extract_text(element):
-    """
-    Helper function to extract text from a BeautifulSoup element.
-    """
-    return "".join([el.get_text(strip=True) for el in element])
-
-def extract_case_data_from_row(case_row, details=["title", "date", "type", "federal_court", "industry"]):
-    """
-    This function extracts various case details from a single row of case data.
-    :param case_row: BeautifulSoup Tag
-    :param details: list, a list of case details to extract
-    :return: dict,  a dictionary containing the extracted case details.
-    """
-    case_data = {}
-    try:
-        if "title" in details:
-            title_element = case_row.find('td', {'class': 'views-field views-field-title'})
-            case_data["case_title"] = title_element.find('a').text.strip()
-            case_data["case_link"] = urllib.parse.urljoin(BASE_URL, title_element.find('a').get("href"))
-        if "date" in details:
-            date_element = case_row.find('td', {'class': 'views-field views-field-field-case-date'})
-            case_data["case_open_date"] = date_element.find('span').text.strip()
-            date_format = "%B %d, %Y"
-            case_data["case_open_date_obj"] = datetime.datetime.strptime(case_data["case_open_date"], date_format)
-        if "type" in details:
-            type_element = case_row.find('td', {'class': 'views-field views-field-field-case-type'})
-            case_data["case_type"] = type_element.find('span').text.strip()
-        if "federal_court" in details:
-            court_element = case_row.find('td', {'class': 'views-field views-field-field-brief-federal-court'})
-            case_data["federal_court"] = court_element.find('span').text.strip()
-        if "industry" in details:
-            industry_element = case_row.find('td', {'class': 'views-field views-field-field-case-industry'})
-            case_data["industry"] = industry_element.find('span').text.strip()
-    except Exception as e:
-        print(f"Error extracting case data: {e}")
-    return case_data
-def extract_case_data_from_row(case_row):
-    """
-    This function extracts various case details from a single row of case data.
-
-    :param case_row: BeautifulSoup Tag
-    :return: dict,  a dictionary containing the extracted case details.
-    """
-    # Find the relevant HTML elements for each case detail
-    case_title_elements = case_row.find_all('td', {'class': 'views-field views-field-title'})
-    date_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-date'})
-    type_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-type'})
-    federal_court_elements = case_row.find_all('td', {'class': 'views-field views-field-field-brief-federal-court'})
-    industry_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-industry'})
-
-    # Extract case title and link
-    case_title = extract_text(case_title_elements)
-    case_href = case_title_elements[0].find('a').get("href")
-    case_link = urllib.parse.urljoin(BASE_URL, case_href)
-
-    # Extract case open date
-    case_open_date = extract_text(date_elements)
-
-    # Extract case type
-    case_type = extract_text(type_elements)
-
-    # Extract federal court
-    federal_court = extract_text(federal_court_elements)
-
-    # Extract industry
-    industry = extract_text(industry_elements)
-
-    # Convert case open date to a datetime object
-    date_format = "%B %d, %Y"
-    date_obj = datetime.datetime.strptime(case_open_date, date_format)
-
-    # Return the extracted case details as a dictionary
-    return {
-        "case_title": case_title,
-        "case_link": case_link,
-        "case_open_date": case_open_date,
-        "case_open_date_obj": date_obj,
-        "case_type": case_type,
-        "federal_court": federal_court,
-        "industry": industry
-    }
-
-
-def extract_case_data_from_row(case_row):
-    """
-    This function extracts various case details from a single row of case data.
     
-    :param case_row: BeautifulSoup Tag
-    :return: dict,  a dictionary containing the extracted case details.
-    """
-    # Find the relevant HTML elements for each case detail
-    case_title_elements = case_row.find_all('td', {'class': 'views-field views-field-title'})
-    date_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-date'})
-    type_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-type'})
-    federal_court_elements = case_row.find_all('td', {'class': 'views-field views-field-field-brief-federal-court'})
-    industry_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-industry'})
+    BASE_URL = "https://www.justice.gov/"
     
-    # Extract case title and link
-    case_title = " ".join([el.find('a').text for el in case_title_elements])
-    case_href = case_title_elements[0].find('a').get("href")
-    case_link = urllib.parse.urljoin(BASE_URL, case_href)
+    def __init__(self, start_page=0, end_page=23):
+        """
+        Constructs all the necessary attributes for the CaseScraper object.
+
+        Parameters
+        ----------
+            start_page : int, optional
+                The first page to scrape (default is 0).
+            end_page : int, optional
+                The last page to scrape (default is 23).
+        """
+        
+        self.start_page = start_page
+        self.end_page = end_page
     
-    # Extract case open date
-    case_open_date = "".join([el.find('span').text for el in date_elements])
+    def collect_HTML_tables(self):
+        """
+        Collects HTML tables from the Department of Justice website.
+
+        Returns
+        -------
+        list
+            A list of BeautifulSoup Tag objects representing the rows of the HTML tables.
+        """
+        
+        case_list = []
+        with requests.Session() as session:
+            for i in range(self.start_page, self.end_page):
+                url = f"https://www.justice.gov/atr/antitrust-case-filings?f%5B0%5D=field_case_type%3Acivil_merger&page={i}"
+                try:
+                    response = session.get(url)
+                    response.raise_for_status()
+                    soup = BeautifulSoup(response.text, "html.parser")
+                    case_list.extend(soup.find_all("tr")[1:])
+                except requests.HTTPError as e:
+                    print(f"Unable to fetch data from {url}. Error: {e}")
+        return case_list
     
-    # Extract case type
-    case_type = "".join([el.get_text(strip=True) for el in type_elements])
+    @staticmethod
+    def extract_case_data_from_row(case_row, details=["title", "date", "type", "federal_court", "industry"]):
+        """
+        Extracts case data from a row of an HTML table.
+
+        Parameters
+        ----------
+        case_row : bs4.element.Tag
+            A BeautifulSoup Tag object representing a row of an HTML table.
+        details : list, optional
+            A list of strings representing the details to extract (default is ["title", "date", "type", "federal_court", "industry"]).
+
+        Returns
+        -------
+        dict
+            A dictionary containing the extracted case data.
+        """
+        
+        case_data = {}
+        try:
+            if "title" in details:
+            
+                title_element = case_row.find_all('td', {'class': 'views-field views-field-title'})
+                case_data["case_title"] = " ".join([el.find('a').text.strip() for el in title_element])
+                case_data["case_link"] = urllib.parse.urljoin(CaseScraper.BASE_URL, title_element[0].find('a').get("href"))
+            if "date" in details:
+                date_element = case_row.find_all('td', {'class': 'views-field views-field-field-case-date'})
+                case_data["case_open_date"] = " ".join([el.find('span').text.strip() for el in date_element])
+                date_format = "%B %d, %Y"
+                case_data["case_open_date_obj"] = datetime.datetime.strptime(case_data["case_open_date"], date_format)
+            if "type" in details:
+                type_element = case_row.find_all('td', {'class': 'views-field views-field-field-case-type'})
+                case_data["case_type"] = " ".join([el.find('span').text.strip() for el in type_element])
+            if "federal_court" in details:
+                court_element = case_row.find_all('td', {'class': 'views-field views-field-field-brief-federal-court'})
+                case_data["federal_court"] = " ".join([el.find('span').text.strip() for el in court_element])
+            if "industry" in details:
+                industry_element = case_row.find_all('td', {'class': 'views-field views-field-field-case-industry'})
+                case_data["industry"] = " ".join([el.find('span').text.strip() for el in industry_element])
+        except Exception as e:
+            print(f"Error extracting case data: {e}")
+        return case_data
     
-    # Extract federal court
-    federal_court = "".join([el.get_text(strip=True) for el in federal_court_elements])
+    @staticmethod
+    def extract_case_details_from_casepage(casepage_link, details=["markets", "violation", "documents"]):
+        """
+        Extracts case details from a case page.
     
-    # Extract industry
-    industry = "".join([el.get_text(strip=True) for el in industry_elements])
+        Parameters
+        ----------
+        casepage_link : str
+            The URL of the case page.
+        details : list, optional
+            A list of strings representing the details to extract (default is ["markets", "violation", "documents"]).
     
-    # Convert case open date to a datetime object
-    date_format = "%B %d, %Y"
-    date_obj = datetime.datetime.strptime(case_open_date, date_format)
+        Returns
+        -------
+        dict
+            A dictionary containing the extracted case details.
+        """
+        
+        case_details = {}
+        try:
+            response = requests.get(casepage_link)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            if "markets" in details:
+                market_element = soup.find_all('div', {'class': 'field field--name-field-case-market field--type-text field--label-above'})
+                case_details["markets"] = " ".join([el.find("div", {"class":"field__items"}).get_text(strip=True) for el in market_element])
+            if "violation" in details:
+                violation_element = soup.find_all('div', {'class': 'field field--name-field-case-violation field--type-taxonomy-term-reference field--label-above'})
+                case_details["violation"] = " ".join([el.find("div", {"class":"field__items"}).get_text(strip=True) for el in violation_element])
+            if "documents" in details:
+                document_elements = soup.find_all('div', {'class': 'field field--name-field-case-documents field--type-entityreference field--label-above'})
+                case_details["documents"] = [{"doc_name": doc_el.get_text(strip=True), "doc_link": urllib.parse.urljoin(CaseScraper.BASE_URL, doc_el.a.get("href"))} for doc_el in document_elements]
+        except requests.HTTPError as e:
+            print(f"Unable to fetch data from {casepage_link}. Error: {e}")
+        return case_details
     
-    # Return the extracted case details as a dictionary
-    return {
-            "case_title": case_title,
-            "case_link": case_link,
-            "case_open_date": case_open_date,
-            "case_open_date_obj": date_obj,
-            "case_type": case_type,
-            "federal_court": federal_court,
-            "industry": industry
-            }
+    @staticmethod
+    def get_document_details_from_document_page(doc_page_link, details=["date", "type", "attachments"]):
+        """
+        Gets document details from a document page.
+    
+        Parameters
+        ----------
+        doc_page_link : str
+            The URL of the document page.
+        details : list, optional
+            A list of strings representing the details to extract (default is ["date", "type", "attachments"]).
+    
+        Returns
+        -------
+        dict
+            A dictionary containing the extracted document details.
+        """
+        
+        doc_details = {}
+        try:
+            response = requests.get(doc_page_link)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, 'html.parser')
+            field_labels = soup.select('div.field__label')[1:]
+            field_items = soup.select('div.field__items')
+            for label, items in zip(field_labels, field_items):
+                key = label.get_text(strip=True).lower().strip().strip(":")
+                if key in details:
+                    if items.find('a', href=True):
+                        links = items.find_all('a', href=True)
+                        doc_details[key] = [{'document': link.get_text(strip=True).strip("download ").strip("Download "), 'url': urllib.parse.urljoin(CaseScraper.BASE_URL, link['href'])} for link in links if is_pdf_link(urllib.parse.urljoin(CaseScraper.BASE_URL, link['href']))]
+                    else:
+                        doc_details[key] = [item.get_text(strip=True) for item in items]
+                    if key.lower() == 'date':
+                        date_str = doc_details[key][0]
+                        date_format = "%A, %B %d, %Y"
+                        doc_details['date object'] = datetime.datetime.strptime(date_str, date_format)
+        except requests.HTTPError as e:
+            print(f"Unable to fetch data from {doc_page_link}. Error: {e}")
+        return doc_details
+    
+    @staticmethod
+    def find_document_dates(case_link):
+        """
+        Finds the dates of documents associated with a case.
+    
+        Parameters
+        ----------
+        case_link : str
+            The URL of the case.
+    
+        Returns
+        -------
+        list
+            A list of BeautifulSoup Tag objects representing the documents associated with the case.
+        """
+        
+        try:
+            response = requests.get(case_link)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+            return soup.find_all("div", class_="views-row")
+        except requests.HTTPError as e:
+            print(f"Unable to fetch data from {case_link}. Error: {e}")
+            return []
+    
+    @staticmethod
+    def get_document_date(doc):
+        """
+        Gets the date of a document.
+    
+        Parameters
+        ----------
+        doc : bs4.element.Tag
+            A BeautifulSoup Tag object representing a document.
+    
+        Returns
+        -------
+        datetime.datetime
+            A datetime object representing the date of the document.
+        """
+        
+        try:
+            date_str = doc.find("div", class_="views-field-field-filed-date").get_text(strip=True)
+            return datetime.datetime.strptime(date_str, "%m/%d/%Y")
+        except Exception as e:
+            print(f"Error extracting document date: {e}")
+            return None
+    
+    @staticmethod
+    def remove_extra_whitespace(string):
+        """
+        Removes extra whitespace from a string.
+    
+        Parameters
+        ----------
+        string : str
+            The string to remove extra whitespace from.
+    
+        Returns
+        -------
+        str
+            The string with extra whitespace removed.
+        """
+        
+        return re.sub(r'\s+', ' ', string).strip()
 
-
-def extract_case_details_from_casepage(casepage_link):
-    """
-    Given a URL of a case page, this function extracts details such as
-    the markets, violation, and documents.
-
-
-    :param casepage_link: str, URL of the case page
-    :return: dict, a dictionary containing extracted details from the document page
-    """
-    markets = ""
-    violation = ""
-    documents = []
-    base_url = "https://www.justice.gov/"
-    page = requests.get(casepage_link)
-    soup = BeautifulSoup(page.content, "html.parser")
-    market_elements = soup.find_all('div', {'class': 'field field--name-field-case-market field--type-text field--label-above'})
-    violation_elements = soup.find_all('div', {'class': 'field field--name-field-case-violation field--type-taxonomy-term-reference field--label-above'})
-    document_elements = soup.find_all('div', {'class': 'field field--name-field-case-documents field--type-entityreference field--label-above'})
-
-    for el in market_elements:
-        item_el = el.find("div", {"class":"field__items"})
-        markets += item_el.get_text(strip=True)
-
-    for el in violation_elements:
-        item_el = el.find("div", {"class":"field__items"})
-        violation += item_el.get_text(strip=True)
-
-    for el in document_elements:
-        doc_els = el.find_all("div", {"class":"field__item"})
-        for doc_el in doc_els:
-            doc_name = doc_el.get_text(strip=True)
-            doc_href = doc_el.a.get("href")
-
-            doc_link = urllib.parse.urljoin(base_url, doc_href)
-            doc_tup = (doc_name, doc_link)
-            documents.append(doc_tup)
-
-    return {"markets": markets,
-        "violation": violation,
-        "documents": documents}
-
-
-def get_document_details_from_document_page(doc_page_link):
-    """
-    Given a URL of a document page, this function extracts details such as
-    the document date, document type, and any other relevant information.
-    Note: You can only use this function to extract details from a document page, but not a case page.
-    :param doc_page_link: str, URL of the document page
-    :return: dict, a dictionary containing extracted details from the document page
-    """
-
-    # Initialize variables to store document date and type
-    document_date = ""
-    document_type = ""
-
-    # Fetch the content of the document page
-    response = requests.get(doc_page_link)
-    soup = BeautifulSoup(response.content, 'html.parser')
-
-    # Find field labels and items on the page
-    field_labels = soup.select('div.field__label')[1:]
-    field_items = soup.select('div.field__items')
-
-    # Initialize a dictionary to store the results
-    result = {"title":""}
-
-    # Iterate through the pairs of field labels and field items
-    for label, items in zip(field_labels, field_items):
-        key = label.get_text(strip=True).lower().strip().strip(":")
-
-        # Check if the field item contains a link
-        if items.find('a', href=True):
-            links = items.find_all('a', href=True)
-            values = [{'document': link.get_text(strip=True).strip("download ").strip("Download "), 'url': urllib.parse.urljoin(BASE_URL, link['href'])} for link
-                      in links if is_pdf_link(urllib.parse.urljoin(BASE_URL, link['href']))]
-        else:
-            values = [item.get_text(strip=True) for item in items]
-
-        # Check if the value is a date in the given format
-        if key.lower() == 'date':
-
-            date_str = values[0]
-            date_format = "%A, %B %d, %Y"
-            date_obj = datetime.datetime.strptime(date_str, date_format)
-            result['date object'] = date_obj
-            result[key] = values
-        else:
-            result[key] = values
-    # Check if "attachments" key has more than one item
-    if len(result.get("attachments", [])) > 0:
-        # Iterate through the list of attachments
-        for attachment in result["attachments"]:
-            if isinstance(attachment, str):
-                continue
-            # Get the value from the "url" key
-            ##TODO: Need to fix this to account for difference in DOM on https://www.justice.gov/atr/case-document/motion-and-memorandum-united-states-support-entry-final-judgment-19
-            if not "url" in attachment.keys():
-                continue
-            url = attachment["url"]
-
-            # Extract text from the PDF
-            document_text = extract_text_from_pdf(url)
-
-            # Store the document text in the subdictionary
-            attachment["text"] = document_text
-            # pdb.set_trace()
-            doc_type = ""
-            if "document type" in result.keys():
-                doc_type = result["document type"][0]
-            if "complaint" in doc_type.lower():
-                result["title"] = "complaint"
-            else:
-                result["title"] = attachment['document']
-
-    # result["content"] = extract_text_from_pdf()
-
-    return result
-
-def find_document_dates(case_link):
-    response = requests.get(case_link)
-    soup = BeautifulSoup(response.text, "html.parser")
-    doc_list = soup.find_all("div", class_="views-row")
-    return doc_list
-
-def get_document_date(doc):
-    date_str = doc.find("div", class_="views-field-field-filed-date").get_text(strip=True)
-    date_obj = datetime.datetime.strptime(date_str, "%m/%d/%Y")
-    return date_obj
-
-def remove_extra_whitespace(string):
-    return re.sub(r'\s+', ' ', string).strip()
-
-def unpack_column_dict(column):
-    result = []
-    for item in column:
-        line = []
-        for key, value in item.items():
-            line.append(f"{key}: {value}")
-        result.append(" | ".join(line))
-    return "\n".join(result)
-
-def sort_documents(doc_list):
-    result = []
-    for doc in doc_list:
-        title = remove_extra_whitespace(doc.find("div", class_="views-field-title").get_text(strip=True))
-        link = doc.find("a", class_="pdf-link")["href"]
-        date_obj = get_document_date(doc)
-        result.append({"docTitle": title, "docLink": link, "docDateObj": date_obj})
-    return sorted(result, key=lambda k: k["docDateObj"])
-
+    
+    @staticmethod
+    def unpack_column_dict(column):
+        """
+        Unpacks a column of a DataFrame that contains dictionaries.
+    
+        Parameters
+        ----------
+        column : pandas.Series
+            A column of a DataFrame that contains dictionaries.
+    
+        Returns
+        -------
+        str
+            A string representing the unpacked column.
+        """
+        
+        result = []
+        for item in column:
+            line = []
+            for key, value in item.items():
+                line.append(f"{key}: {value}")
+            result.append(" | ".join(line))
+        return "\n".join(result)
+    
+    @staticmethod
+    def sort_documents(doc_list):
+        """
+        Sorts a list of documents by date.
+    
+        Parameters
+        ----------
+        doc_list : list
+            A list of dictionaries representing documents.
+    
+        Returns
+        -------
+        list
+            The list of documents sorted by date.
+        """
+        
+        result = []
+        for doc in doc_list:
+            title = CaseScraper.remove_extra_whitespace(doc.find("div", class_="views-field-title").get_text(strip=True))
+            link = doc.find("a", class_="pdf-link")["href"]
+            date_obj = CaseScraper.get_document_date(doc)
+            result.append({"docTitle": title, "docLink": link, "docDateObj": date_obj})
+        return sorted(result, key=lambda k: k["docDateObj"])
