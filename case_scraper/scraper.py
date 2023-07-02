@@ -11,87 +11,110 @@ import pdb
 
 
 BASE_URL = "https://www.justice.gov/"
-
-
-def collect_HTML_tables():
+def collect_HTML_tables(start_page=0, end_page=23):
     """
     Function to go through the DOJ's civil merger cases dating back to 200 and extract the tr tags from the website.
     Each TR Tag represents a case
+    :param start_page: int, the starting page number
+    :param end_page: int, the ending page number
     :return: list, a list of tr tags, with each tag representing a case
     """
-
-    # Create a session object for HTTP requests
+    case_list = []
     with requests.Session() as session:
-        # Use a generator expression to iterate over the page numbers
-        urls = (f"https://www.justice.gov/atr/antitrust-case-filings?f%5B0%5D=field_case_type%3Acivil_merger&page={i}" for i in range(0, 23))
-        # Use a list comprehension to extract the table rows
-        case_list = [row for url in urls for row in BeautifulSoup(session.get(url).text, "html.parser").find_all("tr")[1:]]
+        for i in range(start_page, end_page):
+            url = f"https://www.justice.gov/atr/antitrust-case-filings?f%5B0%5D=field_case_type%3Acivil_merger&page={i}"
+            try:
+                response = session.get(url)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, "html.parser")
+                case_list.extend(soup.find_all("tr")[1:])
+            except requests.HTTPError as e:
+                print(f"Unable to fetch data from {url}. Error: {e}")
     return case_list
 
-# def extract_case_data(case_row):
-#     """
-#     This function extracts various case details from a single row of case data.
-#
-#     :param case_row: BeautifulSoup Tag
-#     :return: dict,  a dictionary containing the extracted case details.
-#     """
-#     # Initialize empty strings for the case details
-#     case_title = ""
-#     case_link = ""
-#     case_open_date = ""
-#     case_type = ""
-#     federal_court = ""
-#     industry = ""
-#
-#     # Find the relevant HTML elements for each case detail
-#     case_title_elements = case_row.find_all('td', {'class': 'views-field views-field-title'})
-#     date_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-date'})
-#     type_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-type'})
-#     federal_court_elements = case_row.find_all('td', {'class': 'views-field views-field-field-brief-federal-court'})
-#     industry_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-industry'})
-#
-#     # Extract case title and link
-#     for el in case_title_elements:
-#         a_el = el.find('a')
-#         case_title += a_el.text + " "
-#         case_href = a_el.get("href")
-#         case_link = urllib.parse.urljoin(BASE_URL, case_href)
-#         break
-#
-#     # Extract case open date
-#     for el in date_elements:
-#         span_el = el.find('span')
-#         case_open_date += span_el.text
-#
-#     # Extract case type
-#     for el in type_elements:
-#         span_el = el.find('span')
-#         case_type += span_el.text
-#
-#     # Extract federal court
-#     for el in federal_court_elements:
-#         span_el = el.find('span')
-#         federal_court += span_el.text
-#
-#     # Extract industry
-#     for el in industry_elements:
-#         span_el = el.find('span')
-#         industry += span_el.text
-#
-#     # Convert case open date to a datetime object
-#     date_format = "%A, %B %d, %Y"
-#     date_obj = datetime.datetime.strptime(case_open_date, date_format)
-#
-#     # Return the extracted case details as a dictionary
-#     return {
-#             "case_title": case_title,
-#             "case_link": case_link,
-#             "case_open_date": case_open_date,
-#             "case_open_date_obj": date_obj,
-#             "case_type": case_type,
-#             "federal_court": federal_court,
-#             "industry": industry
-#             }
+
+def extract_text(element):
+    """
+    Helper function to extract text from a BeautifulSoup element.
+    """
+    return "".join([el.get_text(strip=True) for el in element])
+
+def extract_case_data_from_row(case_row, details=["title", "date", "type", "federal_court", "industry"]):
+    """
+    This function extracts various case details from a single row of case data.
+    :param case_row: BeautifulSoup Tag
+    :param details: list, a list of case details to extract
+    :return: dict,  a dictionary containing the extracted case details.
+    """
+    case_data = {}
+    try:
+        if "title" in details:
+            title_element = case_row.find('td', {'class': 'views-field views-field-title'})
+            case_data["case_title"] = title_element.find('a').text.strip()
+            case_data["case_link"] = urllib.parse.urljoin(BASE_URL, title_element.find('a').get("href"))
+        if "date" in details:
+            date_element = case_row.find('td', {'class': 'views-field views-field-field-case-date'})
+            case_data["case_open_date"] = date_element.find('span').text.strip()
+            date_format = "%B %d, %Y"
+            case_data["case_open_date_obj"] = datetime.datetime.strptime(case_data["case_open_date"], date_format)
+        if "type" in details:
+            type_element = case_row.find('td', {'class': 'views-field views-field-field-case-type'})
+            case_data["case_type"] = type_element.find('span').text.strip()
+        if "federal_court" in details:
+            court_element = case_row.find('td', {'class': 'views-field views-field-field-brief-federal-court'})
+            case_data["federal_court"] = court_element.find('span').text.strip()
+        if "industry" in details:
+            industry_element = case_row.find('td', {'class': 'views-field views-field-field-case-industry'})
+            case_data["industry"] = industry_element.find('span').text.strip()
+    except Exception as e:
+        print(f"Error extracting case data: {e}")
+    return case_data
+def extract_case_data_from_row(case_row):
+    """
+    This function extracts various case details from a single row of case data.
+
+    :param case_row: BeautifulSoup Tag
+    :return: dict,  a dictionary containing the extracted case details.
+    """
+    # Find the relevant HTML elements for each case detail
+    case_title_elements = case_row.find_all('td', {'class': 'views-field views-field-title'})
+    date_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-date'})
+    type_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-type'})
+    federal_court_elements = case_row.find_all('td', {'class': 'views-field views-field-field-brief-federal-court'})
+    industry_elements = case_row.find_all('td', {'class': 'views-field views-field-field-case-industry'})
+
+    # Extract case title and link
+    case_title = extract_text(case_title_elements)
+    case_href = case_title_elements[0].find('a').get("href")
+    case_link = urllib.parse.urljoin(BASE_URL, case_href)
+
+    # Extract case open date
+    case_open_date = extract_text(date_elements)
+
+    # Extract case type
+    case_type = extract_text(type_elements)
+
+    # Extract federal court
+    federal_court = extract_text(federal_court_elements)
+
+    # Extract industry
+    industry = extract_text(industry_elements)
+
+    # Convert case open date to a datetime object
+    date_format = "%B %d, %Y"
+    date_obj = datetime.datetime.strptime(case_open_date, date_format)
+
+    # Return the extracted case details as a dictionary
+    return {
+        "case_title": case_title,
+        "case_link": case_link,
+        "case_open_date": case_open_date,
+        "case_open_date_obj": date_obj,
+        "case_type": case_type,
+        "federal_court": federal_court,
+        "industry": industry
+    }
+
 
 def extract_case_data_from_row(case_row):
     """
