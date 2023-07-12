@@ -5,7 +5,7 @@ import requests
 class ChatPDF:
 	def __init__(self, api_key):
 		self.api_key = api_key
-		self.headers = {'x-api-key': self.api_key}
+		self.headers = {'x-api-key': self.api_key, "Content-Type": "application/json"}
 	
 	def add_pdf_via_url(self, url):
 		"""
